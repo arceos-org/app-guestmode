@@ -316,7 +316,7 @@ The x86_64 guest runs in 16-bit real mode to simplify setup — no GDT, IDT, or 
 
 ## Origin
 
-This crate is derived from the `h_1_0` tutorial in the [ArceOS OS Camp](https://github.com/arceos-org/arceos) (`tour/h_1_0`), adapted to work as a standalone crate with all dependencies from crates.io and extended to support multiple architectures.
+This crate is derived from the ArceOS hypervisor tutorial in the [ArceOS](https://github.com/arceos-org/arceos) ecosystem, adapted to work as a standalone crate with all dependencies from crates.io and extended to support multiple architectures.
 
 ## License
 

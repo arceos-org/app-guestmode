@@ -1,6 +1,6 @@
 [package]
 name = "arceos-guestmode"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors = ["Lei Shi <shi_lei@massclouds.com>", "Yu Chen <yuchen@tsinghua.edu.cn>"]
 description = "ArceOS Guest Mode (Hypervisor): runs a minimal guest OS (skernel) using hardware-assisted virtualization — RISC-V H-extension, ARM AArch64 EL2, and AMD SVM — with VM exit handling and second-stage page table support"
