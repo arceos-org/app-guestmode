@@ -26,6 +26,8 @@ This application builds a minimal Type-1 hypervisor on ArceOS that:
 
 ### The Guest Payload
 
+`skernel` is now a binary target of the main package, not a standalone crate.
+
 The guest (`skernel`) is a minimal bare-metal program that immediately performs a shutdown:
 
 **RISC-V:**
@@ -198,7 +200,6 @@ app-guestmode/
 │   └── x86_64.toml               # x86_64 platform config
 ├── payload/
 │   └── skernel/                  # Minimal guest OS (no_std Rust)
-│       ├── Cargo.toml
 │       └── src/
 │           └── main.rs           # SBI/PSCI/VMMCALL shutdown (multi-arch)
 ├── src/

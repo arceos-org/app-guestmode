@@ -3,15 +3,15 @@
 
 use core::panic::PanicInfo;
 
-/// Minimal guest kernel entry point.
-///
-/// On RISC-V: performs an SBI legacy shutdown (a7 = 8, ecall).
-/// On AArch64: performs a PSCI SYSTEM_OFF via SVC (x0 = 0x84000008, svc #0).
-/// On x86_64:  performs a VMMCALL with function ID 0x84000008 in EAX.
-///             Assembled as 16-bit real-mode code (guest runs in real mode
-///             under AMD SVM).  Uses global_asm to avoid compiler-generated
-///             function prologue (push rax) which would cause a stack access
-///             fault in a real-mode guest with no mapped stack.
+// Minimal guest kernel entry point.
+//
+// On RISC-V: performs an SBI legacy shutdown (a7 = 8, ecall).
+// On AArch64: performs a PSCI SYSTEM_OFF via SVC (x0 = 0x84000008, svc #0).
+// On x86_64: performs a VMMCALL with function ID 0x84000008 in EAX.
+//            Assembled as 16-bit real-mode code (guest runs in real mode
+//            under AMD SVM). Uses global_asm to avoid compiler-generated
+//            function prologue (push rax) which would cause a stack access
+//            fault in a real-mode guest with no mapped stack.
 
 // x86_64: define _start via global_asm! to avoid function prologue
 #[cfg(target_arch = "x86_64")]

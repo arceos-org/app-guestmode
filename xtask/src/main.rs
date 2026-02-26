@@ -17,41 +17,52 @@ enum Cmd {
     Build {
         #[arg(long, default_value = "riscv64")]
         arch: String,
+        #[arg(long, default_value_t = false)]
+        riscv64: bool,
+        #[arg(long, default_value_t = false)]
+        aarch64: bool,
+        #[arg(long = "x86_64", visible_alias = "x86-64", default_value_t = false)]
+        x86_64: bool,
+        #[arg(long, default_value_t = false)]
+        loongarch64: bool,
     },
     /// Build and run the kernel in QEMU
     Run {
         #[arg(long, default_value = "riscv64")]
         arch: String,
+        #[arg(long, default_value_t = false)]
+        riscv64: bool,
+        #[arg(long, default_value_t = false)]
+        aarch64: bool,
+        #[arg(long = "x86_64", visible_alias = "x86-64", default_value_t = false)]
+        x86_64: bool,
+        #[arg(long, default_value_t = false)]
+        loongarch64: bool,
     },
 }
 
 #[derive(Clone)]
 struct ArchInfo {
     target: &'static str,
-    platform: &'static str,
     objcopy_arch: &'static str,
 }
 
 fn arch_info(arch: &str) -> ArchInfo {
     match arch {
-        "riscv64" => ArchInfo {
+        "riscv64" | "reiscv64" => ArchInfo {
             target: "riscv64gc-unknown-none-elf",
-            platform: "riscv64-qemu-virt",
             objcopy_arch: "riscv64",
         },
         "aarch64" => ArchInfo {
             target: "aarch64-unknown-none-softfloat",
-            platform: "aarch64-qemu-virt",
             objcopy_arch: "aarch64",
         },
         "x86_64" => ArchInfo {
             target: "x86_64-unknown-none",
-            platform: "x86-pc",
             objcopy_arch: "x86_64",
         },
         "loongarch64" => ArchInfo {
             target: "loongarch64-unknown-none",
-            platform: "loongarch64-qemu-virt",
             objcopy_arch: "loongarch64",
         },
         _ => {
@@ -63,6 +74,43 @@ fn arch_info(arch: &str) -> ArchInfo {
             process::exit(1);
         }
     }
+}
+
+fn resolve_arch(
+    arch: &str,
+    riscv64: bool,
+    aarch64: bool,
+    x86_64: bool,
+    loongarch64: bool,
+) -> String {
+    let mut selected = Vec::new();
+    if riscv64 {
+        selected.push("riscv64");
+    }
+    if aarch64 {
+        selected.push("aarch64");
+    }
+    if x86_64 {
+        selected.push("x86_64");
+    }
+    if loongarch64 {
+        selected.push("loongarch64");
+    }
+
+    if selected.len() > 1 {
+        eprintln!(
+            "Error: architecture flags are mutually exclusive, got: {}",
+            selected.join(", ")
+        );
+        process::exit(2);
+    }
+    if let Some(one) = selected.first() {
+        return (*one).to_string();
+    }
+    if arch == "reiscv64" {
+        return "riscv64".to_string();
+    }
+    arch.to_string()
 }
 
 fn project_root() -> PathBuf {
@@ -85,14 +133,8 @@ fn install_config(root: &Path, arch: &str) {
 
 /// Build the guest payload (skernel) for the target architecture.
 fn build_payload(root: &Path, info: &ArchInfo) -> PathBuf {
-    let payload_dir = root.join("payload").join("skernel");
-    let manifest = payload_dir.join("Cargo.toml");
-    
-    // Check if target is supported by skernel (assuming it's written in Rust)
-    // skernel provided here is just a minimal no_std rust program, likely arch-independent or handles arch via asm.
-    // But skernel Makefile used `riscv64gc-unknown-none-elf`.
-    // We should probably pass the target.
-    
+    let manifest = root.join("Cargo.toml");
+
     println!("Building payload (skernel) ...");
 
     let status = Command::new("cargo")
@@ -101,6 +143,10 @@ fn build_payload(root: &Path, info: &ArchInfo) -> PathBuf {
             "--release",
             "--manifest-path",
             manifest.to_str().unwrap(),
+            "--bin",
+            "skernel",
+            "--features",
+            "guest-kernel",
             "--target",
             info.target,
         ])
@@ -115,7 +161,7 @@ fn build_payload(root: &Path, info: &ArchInfo) -> PathBuf {
         process::exit(status.code().unwrap_or(1));
     }
 
-    let payload_elf = payload_dir
+    let payload_elf = root
         .join("target")
         .join(info.target)
         .join("release")
@@ -341,16 +387,30 @@ fn main() {
     let root = project_root();
 
     match cli.command {
-        Cmd::Build { ref arch } => {
-            let info = arch_info(arch);
-            install_config(&root, arch);
+        Cmd::Build {
+            ref arch,
+            riscv64,
+            aarch64,
+            x86_64,
+            loongarch64,
+        } => {
+            let arch = resolve_arch(arch, riscv64, aarch64, x86_64, loongarch64);
+            let info = arch_info(&arch);
+            install_config(&root, &arch);
             let _payload = build_payload(&root, &info);
             do_build(&root, &info);
             println!("Build complete for {arch} ({})", info.target);
         }
-        Cmd::Run { ref arch } => {
-            let info = arch_info(arch);
-            install_config(&root, arch);
+        Cmd::Run {
+            ref arch,
+            riscv64,
+            aarch64,
+            x86_64,
+            loongarch64,
+        } => {
+            let arch = resolve_arch(arch, riscv64, aarch64, x86_64, loongarch64);
+            let info = arch_info(&arch);
+            install_config(&root, &arch);
 
             // 1. Build payload (skernel)
             let payload_bin = build_payload(&root, &info);
@@ -373,7 +433,7 @@ fn main() {
                 do_objcopy(&elf, &bin, info.objcopy_arch);
             }
 
-            do_run_qemu(arch, &elf, &bin, &disk);
+            do_run_qemu(&arch, &elf, &bin, &disk);
         }
     }
 }
