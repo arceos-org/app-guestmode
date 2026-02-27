@@ -98,6 +98,20 @@ fn riscv64_main() {
     use axhal::mem::PhysAddr;
     use memory_addr::va;
 
+    // PFlash1 physical address on RISC-V 64 QEMU virt machine.
+    // pflash0 @ 0x20000000 (32MB), pflash1 @ 0x22000000 (32MB).
+    const PFLASH_START: usize = 0x2200_0000;
+    
+    // Check pflash
+    ax_println!("Reading PFlash at physical address {:#X}...", PFLASH_START);
+    let va = axhal::mem::phys_to_virt(PFLASH_START.into()).as_usize();
+    let ptr = va as *const u32;
+    unsafe {
+        ax_println!("Try to access pflash dev region [{:#X}], got {:#X}", va, *ptr);
+        let magic = (*ptr).to_ne_bytes();
+        ax_println!("Got pflash magic: {}", core::str::from_utf8(&magic).unwrap());
+    }
+
     ax_println!("Hypervisor ...");
 
     // A new address space for vm.
@@ -151,10 +165,11 @@ fn riscv64_main() {
         // riscv 0.11 does not include this variant, so match raw code
         if scause.is_exception() && scause.code() == 10 {
             let sbi_msg = SbiMessage::from_regs(ctx.guest_regs.gprs.a_regs()).ok();
-            ax_println!("VmExit Reason: VSuperEcall: {:?}", sbi_msg);
+            // ax_println!("VmExit Reason: VSuperEcall: {:?}", sbi_msg);
             if let Some(msg) = sbi_msg {
                 match msg {
                     SbiMessage::Reset(_) => {
+                        ax_println!("Guest: SBI SRST shutdown");
                         ax_println!("Shutdown vm normally!");
                     },
                     _ => todo!(),

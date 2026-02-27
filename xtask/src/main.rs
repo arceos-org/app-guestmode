@@ -262,6 +262,37 @@ fn create_fat_disk_image(path: &Path, payload_bin: &Path) {
     );
 }
 
+/// Create a pflash image containing "pfld" magic at offset 0.
+fn create_pflash_image(path: &Path, arch: &str) {
+    let size = match arch {
+        "aarch64" => 64 * 1024 * 1024, // 64MB for virt.flash1
+        _ => 32 * 1024 * 1024,         // 32MB default (riscv64)
+    };
+    const PFLASH_MAGIC: &[u8] = b"pfld";
+
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(path)
+        .unwrap_or_else(|e| {
+            eprintln!("Error: failed to create pflash image: {}", e);
+            process::exit(1);
+        });
+    file.set_len(size).unwrap();
+
+    let mut writer = std::io::BufWriter::new(&file);
+    writer.write_all(PFLASH_MAGIC).unwrap();
+    writer.flush().unwrap();
+
+    println!(
+        "Created pflash image: {} ({} bytes)",
+        path.display(),
+        size
+    );
+}
+
 /// Build the kernel.
 fn do_build(root: &Path, info: &ArchInfo) {
     let manifest = root.join("Cargo.toml");
@@ -306,7 +337,7 @@ fn do_objcopy(elf: &Path, bin: &Path, objcopy_arch: &str) {
 }
 
 /// Run QEMU with VirtIO block device.
-fn do_run_qemu(arch: &str, elf: &Path, bin: &Path, disk: &Path) {
+fn do_run_qemu(arch: &str, elf: &Path, bin: &Path, disk: &Path, pflash: &Path) {
     let mem = "128M";
     let smp = "1";
     let qemu = format!("qemu-system-{arch}");
@@ -328,6 +359,11 @@ fn do_run_qemu(arch: &str, elf: &Path, bin: &Path, disk: &Path) {
                 "default".into(),
                 "-kernel".into(),
                 bin.to_str().unwrap().into(),
+                "-drive".into(),
+                format!(
+                    "if=pflash,format=raw,unit=1,file={},readonly=on",
+                    pflash.display()
+                ),
             ]);
         }
         "aarch64" => {
@@ -338,6 +374,11 @@ fn do_run_qemu(arch: &str, elf: &Path, bin: &Path, disk: &Path) {
                 "virt,virtualization=on".into(),
                 "-kernel".into(),
                 bin.to_str().unwrap().into(),
+                "-drive".into(),
+                format!(
+                    "if=pflash,format=raw,unit=1,file={},readonly=on",
+                    pflash.display()
+                ),
             ]);
         }
         "x86_64" => {
@@ -419,7 +460,11 @@ fn main() {
             let disk = root.join("target").join(format!("disk-{arch}.img"));
             create_fat_disk_image(&disk, &payload_bin);
 
-            // 3. Build kernel
+            // 3. Create pflash image
+            let pflash = root.join("target").join(format!("pflash-{arch}.img"));
+            create_pflash_image(&pflash, &arch);
+
+            // 4. Build kernel
             do_build(&root, &info);
 
             let elf = root
@@ -433,7 +478,7 @@ fn main() {
                 do_objcopy(&elf, &bin, info.objcopy_arch);
             }
 
-            do_run_qemu(&arch, &elf, &bin, &disk);
+            do_run_qemu(&arch, &elf, &bin, &disk, &pflash);
         }
     }
 }
