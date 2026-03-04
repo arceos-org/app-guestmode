@@ -115,12 +115,7 @@ fn riscv64_main() {
     ax_println!("Hypervisor ...");
 
     // A new address space for vm.
-    let mut uspace = axmm::AddrSpace::new_empty(va!(0x8000_0000), 0x800_0000).unwrap();
-
-    // Copy kernel page table entries so kernel code is accessible.
-    uspace
-        .copy_mappings_from(&axmm::kernel_aspace().lock())
-        .unwrap();
+    let mut uspace = axmm::new_user_aspace(va!(0x8000_0000), 0x800_0000).unwrap();
 
     // Load vm binary file into address space.
     if let Err(e) = load_vm_image("/sbin/skernel", &mut uspace) {
@@ -231,7 +226,7 @@ fn aarch64_main() {
 
     // Create guest address space (user-mode VA range).
     // On aarch64 QEMU virt, physical RAM starts at 0x4000_0000.
-    let mut uspace = axmm::AddrSpace::new_empty(va!(0x4000_0000), 0x800_0000).unwrap();
+    let mut uspace = axmm::new_user_aspace(va!(0x4000_0000), 0x800_0000).unwrap();
 
     // Load guest binary into the address space.
     if let Err(e) = load_vm_image("/sbin/skernel", &mut uspace) {
@@ -370,7 +365,7 @@ fn x86_64_main() {
     let msrpm_pa = virt_to_phys_ptr(&msrpm.0[0]);
 
     // ── 5. Create NPT (nested page table) and load guest binary ──
-    let mut npt = axmm::AddrSpace::new_empty(va!(VM_ENTRY), 0x100_0000).unwrap();
+    let mut npt = axmm::new_user_aspace(va!(VM_ENTRY), 0x100_0000).unwrap();
     if let Err(e) = load_vm_image("/sbin/skernel", &mut npt) {
         panic!("Cannot load app! {:?}", e);
     }

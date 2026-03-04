@@ -1,8 +1,6 @@
-use alloc::sync::Arc;
 use axfs::ROOT_FS_CONTEXT;
-use axhal::paging::{MappingFlags, PageSize};
+use axhal::paging::MappingFlags;
 use axhal::mem::phys_to_virt;
-use axmm::backend::{Backend, SharedPages};
 use axmm::AddrSpace;
 use memory_addr::PAGE_SIZE_4K;
 use crate::VM_ENTRY;
@@ -13,18 +11,8 @@ pub fn load_vm_image(fname: &str, uspace: &mut AddrSpace) -> axio::Result<()> {
 
     let flags = MappingFlags::READ | MappingFlags::WRITE | MappingFlags::EXECUTE | MappingFlags::USER;
 
-    let pages = Arc::new(
-        SharedPages::new(PAGE_SIZE_4K, PageSize::Size4K)
-            .map_err(|_| axio::Error::NoMemory)?,
-    );
     uspace
-        .map(
-            VM_ENTRY.into(),
-            PAGE_SIZE_4K,
-            flags,
-            true,
-            Backend::new_shared(VM_ENTRY.into(), pages),
-        )
+        .map_alloc(VM_ENTRY.into(), PAGE_SIZE_4K, flags, true)
         .map_err(|_| axio::Error::NoMemory)?;
 
     let (paddr, _, _) = uspace
@@ -42,22 +30,26 @@ pub fn load_vm_image(fname: &str, uspace: &mut AddrSpace) -> axio::Result<()> {
         );
     }
 
-    // AArch64: ensure D-cache is flushed and I-cache is invalidated so the
+    // AArch64: ensure D-cache is cleaned and I-cache is invalidated so the
     // CPU fetches the freshly-written guest instructions, not stale zeros.
     #[cfg(target_arch = "aarch64")]
     unsafe {
         let va = phys_to_virt(paddr).as_usize();
-        // Clean every cache line (64 bytes) to Point of Unification
+        // Clean every data cache line (64 bytes) to Point of Unification
         let mut off = 0usize;
         while off < PAGE_SIZE_4K {
             core::arch::asm!("dc cvau, {}", in(reg) (va + off));
             off += 64;
         }
         core::arch::asm!("dsb ish");
-        // Invalidate entire I-cache
-        core::arch::asm!("ic iallu");
-        core::arch::asm!("dsb ish");
-        core::arch::asm!("isb");
+        // Invalidate entire I-cache using platform abstraction
+        axhal::asm::flush_icache_all();
+    }
+
+    // RISC-V: fence.i to ensure the instruction cache sees newly-written code.
+    #[cfg(target_arch = "riscv64")]
+    unsafe {
+        core::arch::asm!("fence.i");
     }
 
     Ok(())

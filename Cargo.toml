@@ -44,23 +44,23 @@ required-features = ["guest-kernel"]
 
 [dependencies]
 # ─── ArceOS crates (common, all architectures) ───
-axstd = { version = "0.2.2-preview.1", features = ["defplat", "alloc", "paging", "multitask", "sched-cfs"], optional = true }
-# Enable FS init in axruntime (bypasses broken arceos_api/fs)
-axfeat = { version = "0.2.2-preview.1", features = ["fs", "fs-fat"], optional = true }
+axstd = { version = "0.3.0-preview.1", features = ["defplat", "alloc", "paging", "multitask", "sched-cfs"], optional = true }
+# Enable FS init in axruntime
+axfeat = { version = "0.3.0-preview.1", features = ["fs"], optional = true }
 # Direct filesystem access API
-axfs = { version = "0.2.2-preview.1", features = ["fat"], optional = true }
+axfs = { version = "0.3.0-preview.1", features = ["monolitic"], optional = true }
 # I/O traits (Read, Write, Seek)
 axio = { version = "0.3.0-pre.1", optional = true }
 # Memory management - user address spaces
-axmm = { version = "0.2.2-preview.1", features = ["copy"], optional = true }
+axmm = { version = "0.3.0-preview.1", features = ["copy"], optional = true }
 # HAL - UserContext, paging, trap handling
-axhal = { version = "0.2.2-preview.3", features = ["uspace"], optional = true }
+axhal = { version = "0.3.0-preview.1", features = ["uspace"], optional = true }
 # Synchronization primitives
-axsync = { version = "0.2.2-preview.1", optional = true }
+axsync = { version = "0.3.0-preview.1", optional = true }
 # Task management
-axtask = { version = "0.2.2-preview.3", optional = true }
+axtask = { version = "0.3.0-preview.1", optional = true }
 # Logging (ax_println!)
-axlog = { version = "0.2.2-preview.1", optional = true }
+axlog = { version = "0.3.0-preview.1", optional = true }
 # Error types
 axerrno = { version = "0.1", optional = true }
 # Address types
