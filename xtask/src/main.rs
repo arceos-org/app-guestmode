@@ -5,7 +5,10 @@ use std::process::{self, Command};
 
 /// ArceOS guest-mode multi-architecture build & run tool
 #[derive(Parser)]
-#[command(name = "xtask", about = "Build and run arceos-guestmode on different architectures")]
+#[command(
+    name = "xtask",
+    about = "Build and run arceos-guestmode on different architectures"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Cmd,
@@ -172,9 +175,9 @@ fn build_payload(root: &Path, info: &ArchInfo) -> PathBuf {
     // The h_1_0 source calls `load_vm_image("/sbin/skernel")`.
     // The `make payload` in h_1_0 does `rust-objcopy ... -O binary`.
     // So `skernel` on disk image should be a binary file.
-    
+
     let payload_bin = payload_elf.with_extension("bin");
-    
+
     let status = Command::new("rust-objcopy")
         .args([
             &format!("--binary-architecture={}", info.objcopy_arch),
@@ -286,11 +289,7 @@ fn create_pflash_image(path: &Path, arch: &str) {
     writer.write_all(PFLASH_MAGIC).unwrap();
     writer.flush().unwrap();
 
-    println!(
-        "Created pflash image: {} ({} bytes)",
-        path.display(),
-        size
-    );
+    println!("Created pflash image: {} ({} bytes)", path.display(), size);
 }
 
 /// Build the kernel.

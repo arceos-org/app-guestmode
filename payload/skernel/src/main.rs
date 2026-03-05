@@ -19,9 +19,9 @@ core::arch::global_asm!(
     ".code16",
     ".global _start",
     "_start:",
-    "mov eax, 0x84000008",   // function ID = PSCI-style SYSTEM_OFF
-    "vmmcall",                // AMD SVM hypercall → VMEXIT to hypervisor
-    "2: jmp 2b",              // spin if vmmcall returns
+    "mov eax, 0x84000008", // function ID = PSCI-style SYSTEM_OFF
+    "vmmcall",             // AMD SVM hypercall → VMEXIT to hypervisor
+    "2: jmp 2b",           // spin if vmmcall returns
     ".code64",
 );
 
@@ -31,11 +31,7 @@ core::arch::global_asm!(
 unsafe extern "C" fn _start() -> ! {
     #[cfg(target_arch = "riscv64")]
     unsafe {
-        core::arch::asm!(
-            "li a7, 8",
-            "ecall",
-            options(noreturn)
-        );
+        core::arch::asm!("li a7, 8", "ecall", options(noreturn));
     }
 
     #[cfg(target_arch = "aarch64")]
